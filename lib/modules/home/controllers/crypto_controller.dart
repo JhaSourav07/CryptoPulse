@@ -6,23 +6,24 @@ import '../../../data/models/coin_model.dart';
 class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
   final ApiService _apiService = ApiService();
   Timer? _timer;
+  
+  // Observable to show the user when data was last fetched
+  final lastUpdated = "".obs;
 
   @override
   void onInit() {
     super.onInit();
-    // 1. Initial Load (Shows full loading spinner)
     fetchCoins(isInitialLoad: true);
     
-    // 2. Start Auto-Refresh Timer (Every 60 seconds)
-    // We use 60s to stay within CoinGecko's free tier rate limits
-    _timer = Timer.periodic(const Duration(seconds: 60), (timer) {
+    // REDUCED TIMER: 30 seconds for better feedback
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      print("⏰ Auto-refresh triggered at ${DateTime.now()}");
       fetchCoins(isInitialLoad: false);
     });
   }
 
   @override
   void onClose() {
-    // 3. Prevent memory leaks by cancelling timer
     _timer?.cancel();
     super.onClose();
   }
@@ -33,27 +34,25 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     }
 
     try {
+      print("🔄 Fetching data from API...");
       final coins = await _apiService.fetchTopCoins();
       
+      // Update timestamp
+      final now = DateTime.now();
+      lastUpdated.value = "${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}:${now.second.toString().padLeft(2,'0')}";
+
       if (coins.isEmpty) {
         change([], status: RxStatus.empty());
       } else {
-        // Success: Update state seamlessly
+        // Force update even if data looks similar
         change(coins, status: RxStatus.success());
       }
+      print("✅ Data updated successfully");
     } catch (e) {
-      // Only show error screen on initial load.
-      // If a background update fails, keep showing old data.
+      print("❌ Error fetching data: $e");
       if (isInitialLoad) {
         change(null, status: RxStatus.error(e.toString()));
-      } else {
-        print("Background update failed: $e"); 
       }
     }
-  }
-
-  // Wrapper for manual Pull-to-Refresh
-  Future<void> refreshData() async {
-    await fetchCoins(isInitialLoad: false);
   }
 }
