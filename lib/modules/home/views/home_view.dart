@@ -1,3 +1,4 @@
+import 'package:cryptopulse/modules/home/views/detail_view.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/crypto_controller.dart';
@@ -14,7 +15,6 @@ class HomeView extends GetView<CryptoController> {
         title: Column(
           children: [
             const Text("CRYPTO PULSE"),
-            // Last Updated Indicator
             Obx(() => Text(
               controller.lastUpdated.value.isEmpty 
                   ? "Connecting..." 
@@ -40,13 +40,17 @@ class HomeView extends GetView<CryptoController> {
           color: AppColors.accent,
           backgroundColor: AppColors.surface,
           child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(), // Ensures pull-to-refresh works even if list is short
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: state?.length ?? 0,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final coin = state![index];
-              return _CoinTile(coin: coin);
+              return GestureDetector(
+                // 🚀 Add Navigation Here
+                onTap: () => Get.to(() => const DetailView(), arguments: coin),
+                child: _CoinTile(coin: coin),
+              );
             },
           ),
         ),
