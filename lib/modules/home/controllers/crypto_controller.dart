@@ -1,23 +1,31 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '../../../core/services/api_service.dart';
 import '../../../data/models/coin_model.dart';
 
 class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
   final ApiService _apiService = ApiService();
+  final _storage = GetStorage();
   Timer? _timer;
   
-  // Observable to show the user when data was last fetched
   final lastUpdated = "".obs;
+  
+  // 💖 Favorites List (Stores Coin IDs like 'bitcoin', 'ethereum')
+  final RxList<String> favoriteIds = <String>[].obs;
 
   @override
   void onInit() {
     super.onInit();
+    // 1. Load favorites from disk
+    if (_storage.hasData('favorites')) {
+      favoriteIds.assignAll(List<String>.from(_storage.read('favorites')));
+    }
+
+    // 2. Start fetching data
     fetchCoins(isInitialLoad: true);
     
-    // REDUCED TIMER: 30 seconds for better feedback
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      print("⏰ Auto-refresh triggered at ${DateTime.now()}");
       fetchCoins(isInitialLoad: false);
     });
   }
@@ -29,30 +37,39 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
   }
 
   Future<void> fetchCoins({bool isInitialLoad = false}) async {
-    if (isInitialLoad) {
-      change(null, status: RxStatus.loading());
-    }
+    if (isInitialLoad) change(null, status: RxStatus.loading());
 
     try {
-      print("🔄 Fetching data from API...");
       final coins = await _apiService.fetchTopCoins();
-      
-      // Update timestamp
       final now = DateTime.now();
-      lastUpdated.value = "${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}:${now.second.toString().padLeft(2,'0')}";
-
+      lastUpdated.value = "${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}";
+      
       if (coins.isEmpty) {
         change([], status: RxStatus.empty());
       } else {
-        // Force update even if data looks similar
         change(coins, status: RxStatus.success());
       }
-      print("✅ Data updated successfully");
     } catch (e) {
-      print("❌ Error fetching data: $e");
-      if (isInitialLoad) {
-        change(null, status: RxStatus.error(e.toString()));
-      }
+      if (isInitialLoad) change(null, status: RxStatus.error(e.toString()));
     }
+  }
+
+  // 🕹️ Actions
+  void toggleFavorite(String coinId) {
+    if (favoriteIds.contains(coinId)) {
+      favoriteIds.remove(coinId);
+    } else {
+      favoriteIds.add(coinId);
+    }
+    // Save to disk
+    _storage.write('favorites', favoriteIds.toList());
+  }
+
+  bool isFavorite(String coinId) => favoriteIds.contains(coinId);
+
+  // Helper to get only favorite coin objects from the main list
+  List<CoinModel> get favoriteCoins {
+    if (state == null) return [];
+    return state!.where((coin) => favoriteIds.contains(coin.id)).toList();
   }
 }
