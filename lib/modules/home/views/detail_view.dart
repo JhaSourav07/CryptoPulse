@@ -18,7 +18,9 @@ class DetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(DetailController());
     // Get access to the main controller for Favorites logic
-    final homeController = Get.find<CryptoController>();
+    final homeController = Get.isRegistered<CryptoController>()
+        ? Get.find<CryptoController>()
+        : Get.put(CryptoController());
     
     final coin = controller.coin;
     final isPositive = coin.priceChangePercentage24h >= 0;

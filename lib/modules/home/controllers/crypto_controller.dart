@@ -19,7 +19,12 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     super.onInit();
     // 1. Load favorites from disk
     if (_storage.hasData('favorites')) {
-      favoriteIds.assignAll(List<String>.from(_storage.read('favorites')));
+      final storedFavorites = _storage.read('favorites');
+      if (storedFavorites is List) {
+        favoriteIds.assignAll(storedFavorites.whereType<String>());
+      } else {
+        favoriteIds.clear();
+      }
     }
 
     // 2. Start fetching data
