@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart'; // Import
+import 'package:get_storage/get_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'modules/home/controllers/crypto_controller.dart';
 import 'modules/home/views/home_view.dart';

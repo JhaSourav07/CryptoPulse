@@ -36,8 +36,8 @@ class ApiService {
         // Convert to List<List<double>>
         return prices.map((item) {
           return [
-            (item[0] as num).toDouble(), // Timestamp
-            (item[1] as num).toDouble(), // Price
+            (item[0] as num).toDouble(),
+            (item[1] as num).toDouble(),
           ];
         }).toList();
       } else {

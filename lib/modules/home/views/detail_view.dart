@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/detail_controller.dart';
-import '../../home/controllers/crypto_controller.dart'; // Import Home Controller
+import '../../home/controllers/crypto_controller.dart'; 
 import '../../../core/constants/app_colors.dart';
 
 class DetailView extends StatelessWidget {
