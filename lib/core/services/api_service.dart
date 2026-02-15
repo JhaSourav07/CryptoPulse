@@ -7,8 +7,9 @@ class ApiService {
 
   Future<List<CoinModel>> fetchTopCoins() async {
     try {
+      // 🚀 UPGRADE: Fetch Top 50 coins instead of 10
       final response = await http.get(
-        Uri.parse("$_baseUrl/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false"),
+        Uri.parse("$_baseUrl/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"),
       );
 
       if (response.statusCode == 200) {
@@ -22,8 +23,7 @@ class ApiService {
     }
   }
 
-  /// NEW: Fetch 7-day price history for a specific coin
-  /// Returns a list of [timestamp, price]
+  // Fetch 7-day price history
   Future<List<List<double>>> fetchCoinHistory(String coinId) async {
     try {
       final url = "$_baseUrl/coins/$coinId/market_chart?vs_currency=usd&days=7&interval=daily";
@@ -32,8 +32,6 @@ class ApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final List<dynamic> prices = data['prices'];
-        
-        // Convert to List<List<double>>
         return prices.map((item) {
           return [
             (item[0] as num).toDouble(),

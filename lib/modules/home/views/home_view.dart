@@ -14,17 +14,8 @@ class HomeView extends GetView<CryptoController> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Column(
-            children: [
-              const Text("CRYPTO PULSE"),
-              Obx(() => Text(
-                controller.lastUpdated.value.isEmpty 
-                    ? "Connecting..." 
-                    : "Last updated: ${controller.lastUpdated.value}",
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              )),
-            ],
-          ),
+          title: const Text("CRYPTO PULSE"),
+          centerTitle: true,
           actions: [
              IconButton(
               icon: const Icon(Icons.refresh, color: AppColors.accent),
@@ -41,13 +32,34 @@ class HomeView extends GetView<CryptoController> {
             ],
           ),
         ),
-        body: TabBarView(
+        body: Column(
           children: [
-            // Tab 1: All Coins
-            _buildCoinList(context, isFavoritesOnly: false),
+            // 🔍 Search Bar (Persists across tabs)
+            const _SearchBar(),
             
-            // Tab 2: Favorites Only
-            _buildCoinList(context, isFavoritesOnly: true),
+            // Status Indicator
+            Obx(() => Container(
+              width: double.infinity,
+              color: AppColors.surface,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                controller.lastUpdated.value.isEmpty 
+                    ? "Connecting..." 
+                    : "Live prices updated: ${controller.lastUpdated.value}",
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              ),
+            )),
+
+            // Tabs Content
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildCoinList(context, isFavoritesOnly: false),
+                  _buildCoinList(context, isFavoritesOnly: true),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -57,44 +69,94 @@ class HomeView extends GetView<CryptoController> {
   Widget _buildCoinList(BuildContext context, {required bool isFavoritesOnly}) {
     return controller.obx(
       (state) {
-        // Filter data based on tab
-        final displayList = isFavoritesOnly 
-            ? controller.favoriteCoins 
-            : state ?? [];
+        return Obx(() {
+          // 1. Select Source List
+          final sourceList = isFavoritesOnly 
+              ? controller.favoriteCoins 
+              : state ?? [];
+          
+          // 2. Apply Search Filter
+          final displayList = controller.filterCoins(sourceList);
 
-        if (isFavoritesOnly && displayList.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.favorite_border, size: 64, color: Colors.white.withOpacity(0.1)),
-                const SizedBox(height: 16),
-                const Text("No favorites yet", style: TextStyle(color: AppColors.textSecondary)),
-              ],
+          if (displayList.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isFavoritesOnly ? Icons.favorite_border : Icons.search_off, 
+                    size: 64, 
+                    color: Colors.white.withOpacity(0.1)
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isFavoritesOnly 
+                      ? "No favorites found" 
+                      : "No coins match your search", 
+                    style: const TextStyle(color: AppColors.textSecondary)
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async => controller.fetchCoins(isInitialLoad: false),
+            color: AppColors.accent,
+            backgroundColor: AppColors.surface,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: displayList.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final coin = displayList[index];
+                return GestureDetector(
+                  onTap: () => Get.to(() => const DetailView(), arguments: coin),
+                  child: _CoinTile(coin: coin),
+                );
+              },
             ),
           );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async => controller.fetchCoins(isInitialLoad: false),
-          color: AppColors.accent,
-          backgroundColor: AppColors.surface,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: displayList.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final coin = displayList[index];
-              return GestureDetector(
-                onTap: () => Get.to(() => const DetailView(), arguments: coin),
-                child: _CoinTile(coin: coin),
-              );
-            },
-          ),
-        );
+        });
       },
       onLoading: const Center(child: CircularProgressIndicator(color: AppColors.accent)),
       onError: (error) => Center(child: Text(error ?? "Error")),
+    );
+  }
+}
+
+class _SearchBar extends GetView<CryptoController> {
+  const _SearchBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: AppColors.background,
+      child: TextField(
+        onChanged: (value) => controller.searchText.value = value,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: "Search coins (e.g. BTC, Solana)",
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+          prefixIcon: const Icon(Icons.search, color: AppColors.accent),
+          filled: true,
+          fillColor: AppColors.surface,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: const BorderSide(color: AppColors.accent, width: 1),
+          ),
+        ),
+      ),
     );
   }
 }
