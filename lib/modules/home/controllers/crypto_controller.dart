@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cryptopulse/core/services/widget_services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../../core/services/api_service.dart';
@@ -6,17 +7,18 @@ import '../../../data/models/coin_model.dart';
 
 class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
   final ApiService _apiService = ApiService();
+  final WidgetService _widgetService = WidgetService(); // Instance
   final _storage = GetStorage();
   Timer? _timer;
   
   final lastUpdated = "".obs;
   final RxList<String> favoriteIds = <String>[].obs;
-  
-  // 💰 PORTFOLIO STATE (Coin ID -> Amount Owned)
   final RxMap<String, double> holdings = <String, double>{}.obs;
-  
-  // 🔍 Search State
   final searchText = "".obs;
+
+  // 📲 Widget State
+  final RxString widgetCoinId = "".obs;
+  final RxBool widgetShowHoldings = false.obs;
 
   @override
   void onInit() {
@@ -30,6 +32,9 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
       final storedHoldings = _storage.read('holdings') as Map<dynamic, dynamic>;
       holdings.assignAll(storedHoldings.map((key, value) => MapEntry(key.toString(), value as double)));
     }
+    // Load Widget Settings
+    widgetCoinId.value = _storage.read('widget_coin_id') ?? "";
+    widgetShowHoldings.value = _storage.read('widget_show_holdings') ?? false;
 
     fetchCoins(isInitialLoad: true);
     
@@ -50,7 +55,7 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     try {
       final coins = await _apiService.fetchTopCoins();
       
-      if (isClosed) return; // Safety check
+      if (isClosed) return;
 
       final now = DateTime.now();
       lastUpdated.value = "${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}";
@@ -59,6 +64,10 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
         change([], status: RxStatus.empty());
       } else {
         change(coins, status: RxStatus.success());
+        
+        // 📲 AUTOMATIC WIDGET REFRESH
+        // Updates the pinned widget (if one exists) with the latest API data
+        _refreshWidget(coins);
       }
     } catch (e) {
       if (isClosed) return;
@@ -66,7 +75,37 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     }
   }
 
-  // --- FAVORITES LOGIC ---
+  // --- Widget Logic ---
+  
+  /// Called periodically to keep the home screen widget in sync with live prices
+  void _refreshWidget(List<CoinModel> coins) {
+    if (widgetCoinId.isEmpty) return; // No widget pinned
+
+    final coin = coins.firstWhereOrNull((c) => c.id == widgetCoinId.value);
+    if (coin != null) {
+      final amount = getHoldingAmount(coin.id);
+      final value = amount * coin.currentPrice;
+      
+      _widgetService.updateWidget(
+        coin: coin,
+        holdingsValue: value,
+        showHoldings: widgetShowHoldings.value,
+      );
+    }
+  }
+
+  /// Sets the preferred coin for the home screen widget and saves to storage
+  void pinWidget(String coinId, bool showHoldings) {
+    widgetCoinId.value = coinId;
+    widgetShowHoldings.value = showHoldings;
+    _storage.write('widget_coin_id', coinId);
+    _storage.write('widget_show_holdings', showHoldings);
+    
+    // Trigger immediate update if we have data
+    if (state != null) _refreshWidget(state!);
+  }
+
+  // --- Logic for Favorites, Search, Portfolio (unchanged) ---
   void toggleFavorite(String coinId) {
     if (favoriteIds.contains(coinId)) {
       favoriteIds.remove(coinId);
@@ -83,7 +122,6 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     return state!.where((coin) => favoriteIds.contains(coin.id)).toList();
   }
 
-  // --- SEARCH LOGIC ---
   List<CoinModel> filterCoins(List<CoinModel> sourceList) {
     if (searchText.value.isEmpty) return sourceList;
     return sourceList.where((coin) {
@@ -92,7 +130,6 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     }).toList();
   }
 
-  // --- 💰 PORTFOLIO LOGIC ---
   void updateHolding(String coinId, double amount) {
     if (amount <= 0) {
       holdings.remove(coinId);

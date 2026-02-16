@@ -1,0 +1,98 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Top Row: Coin Name & Price -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            
+            <TextView
+                android:id="@+id/coin_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BITCOIN"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:letterSpacing="0.05"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/coin_symbol"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BTC"
+                android:textColor="#888888"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/coin_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="$0.00"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/coin_change"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+0.00%"
+                android:textColor="#00E676"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Divider (Spacing) -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="12dp" />
+
+    <!-- Holdings Section (Hidden by default) -->
+    <LinearLayout
+        android:id="@+id/holdings_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#252525"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MY HOLDINGS"
+            android:textColor="#888888"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/holdings_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$0.00"
+            android:textColor="#00E676"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>

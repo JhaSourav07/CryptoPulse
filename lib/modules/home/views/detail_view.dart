@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:cryptopulse/core/services/widget_services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -19,6 +20,7 @@ class DetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(DetailController());
     final homeController = Get.find<CryptoController>();
+    final widgetService = WidgetService(); // Instance
     
     final coin = controller.coin;
     final isPositive = coin.priceChangePercentage24h >= 0;
@@ -31,6 +33,12 @@ class DetailView extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // 📌 PIN TO WIDGET BUTTON
+          IconButton(
+            icon: const Icon(Icons.widgets_outlined, color: Colors.white),
+            tooltip: "Pin to Home Screen",
+            onPressed: () => _showWidgetDialog(context, homeController, widgetService, coin),
+          ),
           Obx(() {
             final isFav = homeController.isFavorite(coin.id);
             return IconButton(
@@ -85,7 +93,7 @@ class DetailView extends StatelessWidget {
             
             const SizedBox(height: 30),
 
-            // 💰 NEW: My Position Card
+            // My Position Card
             _buildPositionCard(context, homeController, coin),
 
             const SizedBox(height: 30),
@@ -158,7 +166,89 @@ class DetailView extends StatelessWidget {
     );
   }
 
-  // 🏦 Position Card Widget
+  // 📲 Widget Configuration Dialog
+  void _showWidgetDialog(BuildContext context, CryptoController homeCtrl, WidgetService service, CoinModel coin) {
+    bool showHoldings = true;
+    
+    Get.dialog(
+      Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Pin to Home Screen", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text("Update the widget to show ${coin.name}?", style: const TextStyle(color: AppColors.textSecondary)),
+                  const SizedBox(height: 20),
+                  
+                  // Toggle Option
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12)
+                    ),
+                    child: CheckboxListTile(
+                      activeColor: AppColors.accent,
+                      checkColor: Colors.black,
+                      title: const Text("Show my holdings", style: TextStyle(fontSize: 14)),
+                      subtitle: const Text("Displays total value", style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      value: showHoldings,
+                      onChanged: (val) => setState(() => showHoldings = val!),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Get.back(),
+                        child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.black),
+                        onPressed: () {
+                          // Calculate Value
+                          final amount = homeCtrl.getHoldingAmount(coin.id);
+                          final value = amount * coin.currentPrice;
+                          
+                          // Update Widget
+                          service.updateWidget(
+                            coin: coin, 
+                            holdingsValue: value, 
+                            showHoldings: showHoldings
+                          );
+                          
+                          Get.back();
+                          Get.snackbar(
+                            "Widget Updated", 
+                            "Added ${coin.name} to home screen",
+                            backgroundColor: AppColors.accent.withOpacity(0.9),
+                            colorText: Colors.black,
+                            margin: const EdgeInsets.all(16),
+                          );
+                        },
+                        child: const Text("Pin Widget"),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- EXISTING HELPERS (Unchanged) ---
   Widget _buildPositionCard(BuildContext context, CryptoController homeCtrl, CoinModel coin) {
     return Obx(() {
       final amount = homeCtrl.getHoldingAmount(coin.id);
@@ -218,10 +308,8 @@ class DetailView extends StatelessWidget {
     });
   }
 
-  // ✏️ Edit Dialog
   void _showEditDialog(BuildContext context, CryptoController ctrl, CoinModel coin, double currentAmount) {
     final textCtrl = TextEditingController(text: currentAmount > 0 ? currentAmount.toString() : "");
-    
     Get.dialog(
       Dialog(
         backgroundColor: AppColors.surface,
@@ -252,10 +340,7 @@ class DetailView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: () => Get.back(),
-                    child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
-                  ),
+                  TextButton(onPressed: () => Get.back(), child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary))),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.black),
