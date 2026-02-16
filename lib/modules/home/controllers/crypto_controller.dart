@@ -12,14 +12,23 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
   final lastUpdated = "".obs;
   final RxList<String> favoriteIds = <String>[].obs;
   
+  // 💰 PORTFOLIO STATE (Coin ID -> Amount Owned)
+  final RxMap<String, double> holdings = <String, double>{}.obs;
+  
   // 🔍 Search State
   final searchText = "".obs;
 
   @override
   void onInit() {
     super.onInit();
+    // Load Favorites
     if (_storage.hasData('favorites')) {
       favoriteIds.assignAll(List<String>.from(_storage.read('favorites')));
+    }
+    // Load Holdings
+    if (_storage.hasData('holdings')) {
+      final storedHoldings = _storage.read('holdings') as Map<dynamic, dynamic>;
+      holdings.assignAll(storedHoldings.map((key, value) => MapEntry(key.toString(), value as double)));
     }
 
     fetchCoins(isInitialLoad: true);
@@ -41,9 +50,7 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     try {
       final coins = await _apiService.fetchTopCoins();
       
-      // 🛡️ SAFETY CHECK: If controller is disposed during await, stop here.
-      // This prevents "Trying to render a disposed EngineFlutterView" errors.
-      if (isClosed) return;
+      if (isClosed) return; // Safety check
 
       final now = DateTime.now();
       lastUpdated.value = "${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}";
@@ -54,11 +61,12 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
         change(coins, status: RxStatus.success());
       }
     } catch (e) {
-      if (isClosed) return; // Safety check for errors too
+      if (isClosed) return;
       if (isInitialLoad) change(null, status: RxStatus.error(e.toString()));
     }
   }
 
+  // --- FAVORITES LOGIC ---
   void toggleFavorite(String coinId) {
     if (favoriteIds.contains(coinId)) {
       favoriteIds.remove(coinId);
@@ -75,12 +83,36 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     return state!.where((coin) => favoriteIds.contains(coin.id)).toList();
   }
 
-  // 🔍 Helper to filter ANY list (All or Favorites) based on search text
+  // --- SEARCH LOGIC ---
   List<CoinModel> filterCoins(List<CoinModel> sourceList) {
     if (searchText.value.isEmpty) return sourceList;
     return sourceList.where((coin) {
       return coin.name.toLowerCase().contains(searchText.value.toLowerCase()) ||
              coin.symbol.toLowerCase().contains(searchText.value.toLowerCase());
     }).toList();
+  }
+
+  // --- 💰 PORTFOLIO LOGIC ---
+  void updateHolding(String coinId, double amount) {
+    if (amount <= 0) {
+      holdings.remove(coinId);
+    } else {
+      holdings[coinId] = amount;
+    }
+    _storage.write('holdings', holdings);
+  }
+
+  double getHoldingAmount(String coinId) => holdings[coinId] ?? 0.0;
+  
+  double get totalPortfolioValue {
+    if (state == null) return 0.0;
+    double total = 0.0;
+    holdings.forEach((id, amount) {
+      final coin = state!.firstWhereOrNull((c) => c.id == id);
+      if (coin != null) {
+        total += coin.currentPrice * amount;
+      }
+    });
+    return total;
   }
 }
