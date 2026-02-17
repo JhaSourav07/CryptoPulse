@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:cryptopulse/core/services/widget_services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../../core/services/api_service.dart';
@@ -7,7 +6,6 @@ import '../../../data/models/coin_model.dart';
 
 class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
   final ApiService _apiService = ApiService();
-  final WidgetService _widgetService = WidgetService(); // Instance
   final _storage = GetStorage();
   Timer? _timer;
   
@@ -16,25 +14,26 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
   final RxMap<String, double> holdings = <String, double>{}.obs;
   final searchText = "".obs;
 
-  // 📲 Widget State
-  final RxString widgetCoinId = "".obs;
-  final RxBool widgetShowHoldings = false.obs;
+  // 🌍 Currency State
+  final selectedCurrency = "usd".obs;
+  final currencySymbol = "\$".obs;
 
   @override
   void onInit() {
     super.onInit();
-    // Load Favorites
+    // Load Settings
     if (_storage.hasData('favorites')) {
       favoriteIds.assignAll(List<String>.from(_storage.read('favorites')));
     }
-    // Load Holdings
     if (_storage.hasData('holdings')) {
       final storedHoldings = _storage.read('holdings') as Map<dynamic, dynamic>;
       holdings.assignAll(storedHoldings.map((key, value) => MapEntry(key.toString(), value as double)));
     }
-    // Load Widget Settings
-    widgetCoinId.value = _storage.read('widget_coin_id') ?? "";
-    widgetShowHoldings.value = _storage.read('widget_show_holdings') ?? false;
+    // Load Saved Currency
+    if (_storage.hasData('currency')) {
+      selectedCurrency.value = _storage.read('currency');
+      _updateSymbol();
+    }
 
     fetchCoins(isInitialLoad: true);
     
@@ -53,7 +52,8 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     if (isInitialLoad) change(null, status: RxStatus.loading());
 
     try {
-      final coins = await _apiService.fetchTopCoins();
+      // Pass the selected currency to the API
+      final coins = await _apiService.fetchTopCoins(selectedCurrency.value);
       
       if (isClosed) return;
 
@@ -64,10 +64,6 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
         change([], status: RxStatus.empty());
       } else {
         change(coins, status: RxStatus.success());
-        
-        // 📲 AUTOMATIC WIDGET REFRESH
-        // Updates the pinned widget (if one exists) with the latest API data
-        _refreshWidget(coins);
       }
     } catch (e) {
       if (isClosed) return;
@@ -75,37 +71,24 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     }
   }
 
-  // --- Widget Logic ---
-  
-  /// Called periodically to keep the home screen widget in sync with live prices
-  void _refreshWidget(List<CoinModel> coins) {
-    if (widgetCoinId.isEmpty) return; // No widget pinned
+  // 💱 Change Currency
+  void changeCurrency(String code) {
+    selectedCurrency.value = code;
+    _updateSymbol();
+    _storage.write('currency', code);
+    fetchCoins(isInitialLoad: true); // Reload data with new currency
+  }
 
-    final coin = coins.firstWhereOrNull((c) => c.id == widgetCoinId.value);
-    if (coin != null) {
-      final amount = getHoldingAmount(coin.id);
-      final value = amount * coin.currentPrice;
-      
-      _widgetService.updateWidget(
-        coin: coin,
-        holdingsValue: value,
-        showHoldings: widgetShowHoldings.value,
-      );
+  void _updateSymbol() {
+    switch (selectedCurrency.value) {
+      case 'inr': currencySymbol.value = "₹"; break;
+      case 'eur': currencySymbol.value = "€"; break;
+      case 'gbp': currencySymbol.value = "£"; break;
+      default: currencySymbol.value = "\$";
     }
   }
 
-  /// Sets the preferred coin for the home screen widget and saves to storage
-  void pinWidget(String coinId, bool showHoldings) {
-    widgetCoinId.value = coinId;
-    widgetShowHoldings.value = showHoldings;
-    _storage.write('widget_coin_id', coinId);
-    _storage.write('widget_show_holdings', showHoldings);
-    
-    // Trigger immediate update if we have data
-    if (state != null) _refreshWidget(state!);
-  }
-
-  // --- Logic for Favorites, Search, Portfolio (unchanged) ---
+  // --- Logic for Favorites, Search, Portfolio ---
   void toggleFavorite(String coinId) {
     if (favoriteIds.contains(coinId)) {
       favoriteIds.remove(coinId);

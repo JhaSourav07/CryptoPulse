@@ -5,11 +5,11 @@ import '../../data/models/coin_model.dart';
 class ApiService {
   static const String _baseUrl = "https://api.coingecko.com/api/v3";
 
-  Future<List<CoinModel>> fetchTopCoins() async {
+  // 🌍 Now accepts a currency code (default: usd)
+  Future<List<CoinModel>> fetchTopCoins(String currency) async {
     try {
-      // 🚀 UPGRADE: Fetch Top 50 coins instead of 10
       final response = await http.get(
-        Uri.parse("$_baseUrl/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"),
+        Uri.parse("$_baseUrl/coins/markets?vs_currency=$currency&order=market_cap_desc&per_page=50&page=1&sparkline=false"),
       );
 
       if (response.statusCode == 200) {
@@ -23,10 +23,10 @@ class ApiService {
     }
   }
 
-  // Fetch 7-day price history
-  Future<List<List<double>>> fetchCoinHistory(String coinId) async {
+  // Fetch 7-day price history with dynamic currency
+  Future<List<List<double>>> fetchCoinHistory(String coinId, String currency) async {
     try {
-      final url = "$_baseUrl/coins/$coinId/market_chart?vs_currency=usd&days=7&interval=daily";
+      final url = "$_baseUrl/coins/$coinId/market_chart?vs_currency=$currency&days=7&interval=daily";
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {

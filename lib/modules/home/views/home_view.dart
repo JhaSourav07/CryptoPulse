@@ -15,9 +15,26 @@ class HomeView extends GetView<CryptoController> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("CRYPTO PULSE"),
-          centerTitle: true,
+          centerTitle: false, // Align left to make room for actions
           actions: [
-             IconButton(
+            // 🌍 Currency Switcher
+            Obx(() => DropdownButton<String>(
+              value: controller.selectedCurrency.value,
+              dropdownColor: AppColors.surface,
+              underline: const SizedBox(),
+              icon: const Icon(Icons.arrow_drop_down, color: AppColors.accent),
+              items: const [
+                DropdownMenuItem(value: 'usd', child: Text("USD", style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'inr', child: Text("INR", style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'eur', child: Text("EUR", style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'gbp', child: Text("GBP", style: TextStyle(color: Colors.white))),
+              ],
+              onChanged: (val) {
+                if (val != null) controller.changeCurrency(val);
+              },
+            )),
+            const SizedBox(width: 8),
+            IconButton(
               icon: const Icon(Icons.refresh, color: AppColors.accent),
               onPressed: () => controller.fetchCoins(isInitialLoad: true),
             )
@@ -34,10 +51,9 @@ class HomeView extends GetView<CryptoController> {
         ),
         body: Column(
           children: [
-            // 🔍 Search Bar (Persists across tabs)
+            const _PortfolioSummary(),
             const _SearchBar(),
             
-            // Status Indicator
             Obx(() => Container(
               width: double.infinity,
               color: AppColors.surface,
@@ -51,7 +67,6 @@ class HomeView extends GetView<CryptoController> {
               ),
             )),
 
-            // Tabs Content
             Expanded(
               child: TabBarView(
                 children: [
@@ -70,12 +85,7 @@ class HomeView extends GetView<CryptoController> {
     return controller.obx(
       (state) {
         return Obx(() {
-          // 1. Select Source List
-          final sourceList = isFavoritesOnly 
-              ? controller.favoriteCoins 
-              : state ?? [];
-          
-          // 2. Apply Search Filter
+          final sourceList = isFavoritesOnly ? controller.favoriteCoins : state ?? [];
           final displayList = controller.filterCoins(sourceList);
 
           if (displayList.isEmpty) {
@@ -90,9 +100,7 @@ class HomeView extends GetView<CryptoController> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    isFavoritesOnly 
-                      ? "No favorites found" 
-                      : "No coins match your search", 
+                    isFavoritesOnly ? "No favorites found" : "No coins match your search", 
                     style: const TextStyle(color: AppColors.textSecondary)
                   ),
                 ],
@@ -112,7 +120,7 @@ class HomeView extends GetView<CryptoController> {
                 final coin = displayList[index];
                 return GestureDetector(
                   onTap: () => Get.to(() => const DetailView(), arguments: coin),
-                  child: _CoinTile(coin: coin),
+                  child: _CoinTile(coin: coin), // CoinTile will now pick up the symbol automatically
                 );
               },
             ),
@@ -125,9 +133,53 @@ class HomeView extends GetView<CryptoController> {
   }
 }
 
+class _PortfolioSummary extends GetView<CryptoController> {
+  const _PortfolioSummary();
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final _ = controller.lastUpdated.value; 
+      final total = controller.totalPortfolioValue;
+      // Get dynamic symbol
+      final symbol = controller.currencySymbol.value;
+
+      if (total <= 0) return const SizedBox.shrink();
+
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.accent.withOpacity(0.15), AppColors.surface],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.accent.withOpacity(0.2)),
+          boxShadow: [
+             BoxShadow(color: AppColors.accent.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5)),
+          ],
+        ),
+        child: Column(
+          children: [
+            const Text("TOTAL PORTFOLIO BALANCE", style: TextStyle(color: AppColors.textSecondary, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            // Use dynamic symbol
+            Text(
+              "$symbol${total.toStringAsFixed(2)}",
+              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, height: 1.0),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
 class _SearchBar extends GetView<CryptoController> {
   const _SearchBar();
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -143,31 +195,24 @@ class _SearchBar extends GetView<CryptoController> {
           filled: true,
           fillColor: AppColors.surface,
           contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: const BorderSide(color: AppColors.accent, width: 1),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: AppColors.accent, width: 1)),
         ),
       ),
     );
   }
 }
 
-class _CoinTile extends StatelessWidget {
+class _CoinTile extends GetView<CryptoController> {
   final CoinModel coin;
   const _CoinTile({required this.coin});
 
   @override
   Widget build(BuildContext context) {
     final bool isPositive = coin.priceChangePercentage24h >= 0;
+    // Dynamic Symbol
+    final symbol = controller.currencySymbol.value;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -178,11 +223,7 @@ class _CoinTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: Colors.transparent,
-            backgroundImage: NetworkImage(coin.image),
-            radius: 20,
-          ),
+          CircleAvatar(backgroundColor: Colors.transparent, backgroundImage: NetworkImage(coin.image), radius: 20),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -196,7 +237,7 @@ class _CoinTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text("\$${coin.currentPrice.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text("$symbol${coin.currentPrice.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Row(
                 children: [
                   Icon(isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: isPositive ? AppColors.accent : AppColors.error, size: 20),

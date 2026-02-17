@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:cryptopulse/core/services/widget_services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,11 +19,13 @@ class DetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(DetailController());
     final homeController = Get.find<CryptoController>();
-    final widgetService = WidgetService(); // Instance
     
     final coin = controller.coin;
     final isPositive = coin.priceChangePercentage24h >= 0;
     final themeColor = isPositive ? AppColors.accent : AppColors.error;
+    
+    // Dynamic Symbol from Controller
+    final symbol = homeController.currencySymbol.value;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -33,12 +34,6 @@ class DetailView extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // 📌 PIN TO WIDGET BUTTON
-          IconButton(
-            icon: const Icon(Icons.widgets_outlined, color: Colors.white),
-            tooltip: "Pin to Home Screen",
-            onPressed: () => _showWidgetDialog(context, homeController, widgetService, coin),
-          ),
           Obx(() {
             final isFav = homeController.isFavorite(coin.id);
             return IconButton(
@@ -72,7 +67,8 @@ class DetailView extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("\$${coin.currentPrice.toStringAsFixed(2)}", style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.textPrimary, height: 1.0)),
+                    // Dynamic Symbol
+                    Text("$symbol${coin.currentPrice.toStringAsFixed(2)}", style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.textPrimary, height: 1.0)),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -94,7 +90,7 @@ class DetailView extends StatelessWidget {
             const SizedBox(height: 30),
 
             // My Position Card
-            _buildPositionCard(context, homeController, coin),
+            _buildPositionCard(context, homeController, coin, symbol),
 
             const SizedBox(height: 30),
             
@@ -136,7 +132,7 @@ class DetailView extends StatelessWidget {
                       lineTouchData: LineTouchData(touchTooltipData: LineTouchTooltipData(tooltipBgColor: AppColors.surface, getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
                           final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
-                          return LineTooltipItem("${_formatDate(date)}\n", const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold), children: [TextSpan(text: "\$${spot.y.toStringAsFixed(2)}", style: TextStyle(color: themeColor, fontSize: 14, fontWeight: FontWeight.bold))]);
+                          return LineTooltipItem("${_formatDate(date)}\n", const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold), children: [TextSpan(text: "$symbol${spot.y.toStringAsFixed(2)}", style: TextStyle(color: themeColor, fontSize: 14, fontWeight: FontWeight.bold))]);
                         }).toList();
                       })),
                     ),
@@ -154,9 +150,9 @@ class DetailView extends StatelessWidget {
                if (history == null || history.isEmpty) return const SizedBox();
                final prices = history.map((e) => e[1]).toList();
                return Row(children: [
-                   Expanded(child: _StatCard(label: "7d Low", value: "\$${prices.reduce(min).toStringAsFixed(2)}", icon: Icons.arrow_downward, color: AppColors.error)),
+                   Expanded(child: _StatCard(label: "7d Low", value: "$symbol${prices.reduce(min).toStringAsFixed(2)}", icon: Icons.arrow_downward, color: AppColors.error)),
                    const SizedBox(width: 16),
-                   Expanded(child: _StatCard(label: "7d High", value: "\$${prices.reduce(max).toStringAsFixed(2)}", icon: Icons.arrow_upward, color: AppColors.accent)),
+                   Expanded(child: _StatCard(label: "7d High", value: "$symbol${prices.reduce(max).toStringAsFixed(2)}", icon: Icons.arrow_upward, color: AppColors.accent)),
                ]);
             }),
             const SizedBox(height: 50),
@@ -166,90 +162,7 @@ class DetailView extends StatelessWidget {
     );
   }
 
-  // 📲 Widget Configuration Dialog
-  void _showWidgetDialog(BuildContext context, CryptoController homeCtrl, WidgetService service, CoinModel coin) {
-    bool showHoldings = true;
-    
-    Get.dialog(
-      Dialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Pin to Home Screen", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text("Update the widget to show ${coin.name}?", style: const TextStyle(color: AppColors.textSecondary)),
-                  const SizedBox(height: 20),
-                  
-                  // Toggle Option
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12)
-                    ),
-                    child: CheckboxListTile(
-                      activeColor: AppColors.accent,
-                      checkColor: Colors.black,
-                      title: const Text("Show my holdings", style: TextStyle(fontSize: 14)),
-                      subtitle: const Text("Displays total value", style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      value: showHoldings,
-                      onChanged: (val) => setState(() => showHoldings = val!),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Get.back(),
-                        child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.black),
-                        onPressed: () {
-                          // Calculate Value
-                          final amount = homeCtrl.getHoldingAmount(coin.id);
-                          final value = amount * coin.currentPrice;
-                          
-                          // Update Widget
-                          service.updateWidget(
-                            coin: coin, 
-                            holdingsValue: value, 
-                            showHoldings: showHoldings
-                          );
-                          
-                          Get.back();
-                          Get.snackbar(
-                            "Widget Updated", 
-                            "Added ${coin.name} to home screen",
-                            backgroundColor: AppColors.accent.withOpacity(0.9),
-                            colorText: Colors.black,
-                            margin: const EdgeInsets.all(16),
-                          );
-                        },
-                        child: const Text("Pin Widget"),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            }
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- EXISTING HELPERS (Unchanged) ---
-  Widget _buildPositionCard(BuildContext context, CryptoController homeCtrl, CoinModel coin) {
+  Widget _buildPositionCard(BuildContext context, CryptoController homeCtrl, CoinModel coin, String symbol) {
     return Obx(() {
       final amount = homeCtrl.getHoldingAmount(coin.id);
       final value = amount * coin.currentPrice;
@@ -289,7 +202,7 @@ class DetailView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "\$${value.toStringAsFixed(2)}",
+                      "$symbol${value.toStringAsFixed(2)}",
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     const SizedBox(height: 4),
