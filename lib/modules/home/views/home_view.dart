@@ -15,9 +15,8 @@ class HomeView extends GetView<CryptoController> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("CRYPTO PULSE"),
-          centerTitle: false, // Align left to make room for actions
+          centerTitle: false,
           actions: [
-            // 🌍 Currency Switcher
             Obx(() => DropdownButton<String>(
               value: controller.selectedCurrency.value,
               dropdownColor: AppColors.surface,
@@ -51,6 +50,9 @@ class HomeView extends GetView<CryptoController> {
         ),
         body: Column(
           children: [
+            // 🌍 NEW: Global Market Stats
+            const _GlobalMarketHeader(),
+            
             const _PortfolioSummary(),
             const _SearchBar(),
             
@@ -120,7 +122,7 @@ class HomeView extends GetView<CryptoController> {
                 final coin = displayList[index];
                 return GestureDetector(
                   onTap: () => Get.to(() => const DetailView(), arguments: coin),
-                  child: _CoinTile(coin: coin), // CoinTile will now pick up the symbol automatically
+                  child: _CoinTile(coin: coin),
                 );
               },
             ),
@@ -133,6 +135,82 @@ class HomeView extends GetView<CryptoController> {
   }
 }
 
+class _GlobalMarketHeader extends GetView<CryptoController> {
+  const _GlobalMarketHeader();
+
+  String _compactCurrency(double value, String symbol) {
+    if (value >= 1e12) return "$symbol${(value / 1e12).toStringAsFixed(2)}T";
+    if (value >= 1e9) return "$symbol${(value / 1e9).toStringAsFixed(2)}B";
+    if (value >= 1e6) return "$symbol${(value / 1e6).toStringAsFixed(2)}M";
+    return "$symbol${value.toStringAsFixed(0)}";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final data = controller.globalData.value;
+      if (data == null) return const SizedBox.shrink();
+      
+      final symbol = controller.currencySymbol.value;
+      final isPositive = data.marketCapChangePercentage24h >= 0;
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        color: AppColors.background,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Market Cap
+            _buildItem(
+              "Market Cap", 
+              _compactCurrency(data.totalMarketCap, symbol),
+              isPositive ? Colors.greenAccent : Colors.redAccent,
+              data.marketCapChangePercentage24h
+            ),
+            // Volume
+            _buildItem(
+              "24h Vol", 
+              _compactCurrency(data.totalVolume, symbol),
+              AppColors.textPrimary,
+              null
+            ),
+            // BTC Dom
+            _buildItem(
+              "BTC Dom", 
+              "${data.btcDominance.toStringAsFixed(1)}%",
+              Colors.orangeAccent,
+              null
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildItem(String label, String value, Color color, double? change) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+            if (change != null) ...[
+              const SizedBox(width: 2),
+              Icon(
+                change >= 0 ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                color: change >= 0 ? Colors.greenAccent : Colors.redAccent,
+                size: 14,
+              )
+            ]
+          ],
+        )
+      ],
+    );
+  }
+}
+
 class _PortfolioSummary extends GetView<CryptoController> {
   const _PortfolioSummary();
 
@@ -141,14 +219,13 @@ class _PortfolioSummary extends GetView<CryptoController> {
     return Obx(() {
       final _ = controller.lastUpdated.value; 
       final total = controller.totalPortfolioValue;
-      // Get dynamic symbol
       final symbol = controller.currencySymbol.value;
 
       if (total <= 0) return const SizedBox.shrink();
 
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0), // Adjusted top margin
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -166,7 +243,6 @@ class _PortfolioSummary extends GetView<CryptoController> {
           children: [
             const Text("TOTAL PORTFOLIO BALANCE", style: TextStyle(color: AppColors.textSecondary, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            // Use dynamic symbol
             Text(
               "$symbol${total.toStringAsFixed(2)}",
               style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, height: 1.0),
@@ -211,7 +287,6 @@ class _CoinTile extends GetView<CryptoController> {
   @override
   Widget build(BuildContext context) {
     final bool isPositive = coin.priceChangePercentage24h >= 0;
-    // Dynamic Symbol
     final symbol = controller.currencySymbol.value;
 
     return Container(
