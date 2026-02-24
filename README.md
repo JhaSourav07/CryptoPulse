@@ -1,5 +1,10 @@
 # CryptoPulse 📈
 
+![Flutter](https://img.shields.io/badge/Flutter-3.35+-02569B?logo=flutter)
+![Dart](https://img.shields.io/badge/Dart-3.9+-0175C2?logo=dart)
+![Platform](https://img.shields.io/badge/Platform-Android%20|%20iOS%20|%20Web-lightgrey)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 A sleek, real-time cryptocurrency tracking app built with Flutter. Monitor live prices, manage your portfolio, track favorites, and even pin coins to your Android home screen widget — all wrapped in a dark, neon-accented UI.
 
 ---
@@ -79,7 +84,7 @@ lib/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/CryptoPulse.git
+git clone hhttps://github.com/JhaSourav07/CryptoPulse.git
 cd CryptoPulse
 
 # 2. Install dependencies
