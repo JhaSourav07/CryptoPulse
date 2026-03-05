@@ -92,6 +92,11 @@ class DetailView extends StatelessWidget {
             // My Position Card
             _buildPositionCard(context, homeController, coin, symbol),
 
+            const SizedBox(height: 16),
+
+            // Pin to Widget
+            _PinToWidgetCard(coin: coin),
+
             const SizedBox(height: 30),
             
             // Chart
@@ -271,6 +276,91 @@ class DetailView extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _PinToWidgetCard extends GetView<CryptoController> {
+  final CoinModel coin;
+  const _PinToWidgetCard({required this.coin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final isPinned = controller.widgetCoinId.value == coin.id;
+      final showHoldings = controller.widgetShowHoldings.value;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isPinned ? AppColors.accent.withOpacity(0.4) : Colors.white.withOpacity(0.05),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.widgets_outlined, color: isPinned ? AppColors.accent : AppColors.textSecondary, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  "Home Screen Widget",
+                  style: TextStyle(
+                    color: isPinned ? AppColors.accent : AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                if (isPinned)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                    child: const Text("Pinned", style: TextStyle(color: AppColors.accent, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+            if (isPinned) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Show holdings value", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Switch(
+                    value: showHoldings,
+                    onChanged: (val) => controller.pinWidget(coin.id, val),
+                    activeColor: AppColors.accent,
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isPinned ? Colors.red.withOpacity(0.15) : AppColors.accent.withOpacity(0.15),
+                  foregroundColor: isPinned ? Colors.redAccent : AppColors.accent,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: Icon(isPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 16),
+                label: Text(isPinned ? "Unpin from Widget" : "Pin to Widget"),
+                onPressed: () {
+                  if (isPinned) {
+                    controller.pinWidget("", false);
+                  } else {
+                    controller.pinWidget(coin.id, showHoldings);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cryptopulse/core/services/widget_services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../../core/services/api_service.dart';
@@ -62,10 +63,15 @@ class CryptoController extends GetxController with StateMixin<List<CoinModel>> {
     try {
       // 1. Fetch Coins
       final coins = await _apiService.fetchTopCoins(selectedCurrency.value);
-      
-      // 2. Fetch Global Data (Parallel-ish)
-      final global = await _apiService.fetchGlobalData(selectedCurrency.value);
-      globalData.value = global;
+
+      // 2. Fetch Global Data independently — its failure must not block the coin list
+      try {
+        final global = await _apiService.fetchGlobalData(selectedCurrency.value);
+        if (!isClosed) globalData.value = global;
+      } catch (e) {
+        // Non-fatal: global market stats unavailable, coin list still loads
+        debugPrint('Failed to fetch global data: $e');
+      }
 
       if (isClosed) return;
 
