@@ -287,7 +287,6 @@ class _CoinTile extends GetView<CryptoController> {
   @override
   Widget build(BuildContext context) {
     final bool isPositive = coin.priceChangePercentage24h >= 0;
-    final symbol = controller.currencySymbol.value;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -309,18 +308,21 @@ class _CoinTile extends GetView<CryptoController> {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text("$symbol${coin.currentPrice.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Row(
-                children: [
-                  Icon(isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: isPositive ? AppColors.accent : AppColors.error, size: 20),
-                  Text("${coin.priceChangePercentage24h.toStringAsFixed(2)}%", style: TextStyle(color: isPositive ? AppColors.accent : AppColors.error, fontSize: 12, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ],
-          ),
+          Obx(() {
+            final symbol = controller.currencySymbol.value;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text("$symbol${coin.currentPrice.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Row(
+                  children: [
+                    Icon(isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: isPositive ? AppColors.accent : AppColors.error, size: 20),
+                    Text("${coin.priceChangePercentage24h.toStringAsFixed(2)}%", style: TextStyle(color: isPositive ? AppColors.accent : AppColors.error, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            );
+          }),
         ],
       ),
     );
